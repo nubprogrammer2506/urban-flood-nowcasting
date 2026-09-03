@@ -39,3 +39,15 @@ data/outputs/*
 # Preserve placeholders
 !data/processed/**/.gitkeep
 !data/outputs/**/.gitkeep
+
+
+# OSMnx cache
+cache/
+
+# Downloaded/generated road datasets
+data/raw/roads/*.gpkg
+data/processed/roads/*.gpkg
+
+# Keep folder placeholders
+!data/raw/roads/.gitkeep
+!data/processed/roads/.gitkeep
