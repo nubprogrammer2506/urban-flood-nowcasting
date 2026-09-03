@@ -1,0 +1,41 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# Environment
+.env
+
+# Editors
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# QGIS temporary files
+*.qgz~
+*.qgs~
+*.aux.xml
+*.ovr
+
+# Large GIS inputs
+data/raw/dem/*.tif
+data/raw/rainfall/*
+data/raw/landuse/*.tif
+
+# Keep rainfall folder placeholder
+!data/raw/rainfall/.gitkeep
+
+# Generated GIS data
+data/processed/*
+data/outputs/*
+
+# Allow folder structure to exist
+!data/processed/**/
+!data/outputs/**/
+
+# Preserve placeholders
+!data/processed/**/.gitkeep
+!data/outputs/**/.gitkeep
