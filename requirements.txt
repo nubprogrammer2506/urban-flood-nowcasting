@@ -3,3 +3,4 @@ geopandas
 shapely
 pyproj
 rasterio
+osmnx
