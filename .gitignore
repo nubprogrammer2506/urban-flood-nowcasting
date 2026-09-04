@@ -1,53 +1,65 @@
+# ==========================================
 # Python
+# ==========================================
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 
-# Environment
+# ==========================================
+# Environment / secrets
+# ==========================================
 .env
+.env.*
 
-# Editors
+# ==========================================
+# IDE
+# ==========================================
 .vscode/
 .idea/
 
-# OS
+# ==========================================
+# Operating system
+# ==========================================
 .DS_Store
 Thumbs.db
 
-# QGIS temporary files
+# ==========================================
+# QGIS temporary / metadata files
+# ==========================================
 *.qgz~
 *.qgs~
 *.aux.xml
 *.ovr
 
-# Large GIS inputs
+data/raw/aoi/*.qmd
+data/raw/aoi/*.qgz
+
+# ==========================================
+# Raw DEM data
+# ==========================================
 data/raw/dem/*.tif
+data/raw/dem/*.tar.gz
+data/raw/dem/*.zip
+data/raw/dem/*.aux.xml
+
+# ==========================================
+# Large rainfall / land-use rasters
+# ==========================================
 data/raw/rainfall/*
 data/raw/landuse/*.tif
 
-# Keep rainfall folder placeholder
-!data/raw/rainfall/.gitkeep
+# ==========================================
+# Generated GIS outputs
+# ==========================================
+data/processed/**/*.tif
+data/processed/**/*.tfw
+data/processed/**/*.aux.xml
 
-# Generated GIS data
-data/processed/*
 data/outputs/*
 
-# Allow folder structure to exist
-!data/processed/**/
-!data/outputs/**/
-
-# Preserve placeholders
+# ==========================================
+# Preserve directory placeholders
+# ==========================================
 !data/processed/**/.gitkeep
 !data/outputs/**/.gitkeep
-
-
-# OSMnx cache
-cache/
-
-# Downloaded/generated road datasets
-data/raw/roads/*.gpkg
-data/processed/roads/*.gpkg
-
-# Keep folder placeholders
-!data/raw/roads/.gitkeep
-!data/processed/roads/.gitkeep
