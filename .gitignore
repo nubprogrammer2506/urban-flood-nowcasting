@@ -47,6 +47,8 @@ data/raw/dem/*.aux.xml
 # Large rainfall / land-use rasters
 # ==========================================
 data/raw/rainfall/*
+!data/raw/rainfall/*.json
+!data/raw/rainfall/.gitkeep
 data/raw/landuse/*.tif
 
 # ==========================================

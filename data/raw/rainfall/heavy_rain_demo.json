@@ -1,0 +1,37 @@
+{
+  "scenario_id": "rajendra_nagar_heavy_rain_demo",
+  "location": "Rajendra Nagar, Pune",
+  "source": "synthetic_mvp_scenario",
+  "interval_minutes": 30,
+  "forecast_horizon_minutes": 180,
+  "forecast": [
+    {
+      "minutes": 0,
+      "rainfall_mm_hr": 20
+    },
+    {
+      "minutes": 30,
+      "rainfall_mm_hr": 35
+    },
+    {
+      "minutes": 60,
+      "rainfall_mm_hr": 60
+    },
+    {
+      "minutes": 90,
+      "rainfall_mm_hr": 80
+    },
+    {
+      "minutes": 120,
+      "rainfall_mm_hr": 70
+    },
+    {
+      "minutes": 150,
+      "rainfall_mm_hr": 45
+    },
+    {
+      "minutes": 180,
+      "rainfall_mm_hr": 25
+    }
+  ]
+}
