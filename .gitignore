@@ -39,3 +39,24 @@ data/outputs/*
 # Preserve placeholders
 !data/processed/**/.gitkeep
 !data/outputs/**/.gitkeep
+
+# ==============================
+# GIS generated raster outputs
+# ==============================
+data/processed/**/*.tif
+data/processed/**/*.tfw
+data/processed/**/*.aux.xml
+
+# ==============================
+# Raw DEM datasets / archives
+# ==============================
+data/raw/dem/*.tif
+data/raw/dem/*.tar.gz
+data/raw/dem/*.zip
+data/raw/dem/*.aux.xml
+
+# ==============================
+# QGIS metadata / local projects
+# ==============================
+data/raw/aoi/*.qmd
+data/raw/aoi/*.qgz
