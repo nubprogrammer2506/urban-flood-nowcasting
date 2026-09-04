@@ -4,3 +4,4 @@ shapely
 pyproj
 rasterio
 osmnx
+networkx

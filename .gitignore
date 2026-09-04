@@ -63,3 +63,19 @@ data/outputs/*
 # ==========================================
 !data/processed/**/.gitkeep
 !data/outputs/**/.gitkeep
+
+
+# OSMnx cache
+cache/
+
+# Reproducible road GIS files
+data/raw/roads/*.gpkg
+data/processed/roads/*.gpkg
+
+# Generated NetworkX graph
+data/processed/roads/*.graphml
+
+# Canonical processed road dataset is committed
+!data/processed/roads/
+!data/processed/roads/roads.geojson
+!data/processed/roads/.gitkeep

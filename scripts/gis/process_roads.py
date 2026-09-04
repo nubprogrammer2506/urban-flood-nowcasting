@@ -1,7 +1,6 @@
 from pathlib import Path
 
 import geopandas as gpd
-import pandas as pd
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -28,6 +27,14 @@ PROCESSED_ROADS_PATH = (
     / "processed"
     / "roads"
     / "rajendra_nagar_roads.gpkg"
+)
+
+CANONICAL_ROADS_PATH = (
+    PROJECT_ROOT
+    / "data"
+    / "processed"
+    / "roads"
+    / "roads.geojson"
 )
 
 WGS84 = "EPSG:4326"
@@ -185,7 +192,10 @@ def main():
             normalize_value
         )
 
+    # -----------------------------------------------------
     # Normalize oneway
+    # -----------------------------------------------------
+
     roads["oneway"] = (
         roads["oneway"]
         .astype(str)
@@ -218,7 +228,6 @@ def main():
 
     roads["length_m"] = roads.geometry.length.round(2)
 
-    # Remove zero-length pieces
     roads = roads[
         roads["length_m"] > 0
     ].copy()
@@ -247,10 +256,17 @@ def main():
         exist_ok=True,
     )
 
+    # GeoPackage version
     roads.to_file(
         PROCESSED_ROADS_PATH,
         layer="roads",
         driver="GPKG",
+    )
+
+    # Canonical GeoJSON version
+    roads.to_file(
+        CANONICAL_ROADS_PATH,
+        driver="GeoJSON",
     )
 
     # -----------------------------------------------------
@@ -277,6 +293,9 @@ def main():
 
     print("\nProcessed road dataset saved:")
     print(PROCESSED_ROADS_PATH)
+
+    print("\nCanonical road dataset saved:")
+    print(CANONICAL_ROADS_PATH)
 
     print("\nRoad processing completed.")
 
