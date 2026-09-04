@@ -2,6 +2,8 @@ from pathlib import Path
 
 import geopandas as gpd
 import networkx as nx
+import numpy as np
+from pyproj import CRS
 from shapely.geometry import LineString, MultiLineString
 
 
@@ -23,10 +25,10 @@ GRAPH_OUTPUT_PATH = (
     / "drainage_graph.graphml"
 )
 
-EXPECTED_EPSG = 32643
+EXPECTED_CRS = CRS.from_epsg(32643)
 
-# Millimetre-level rounding avoids creating separate
-# graph nodes because of tiny floating-point differences.
+# Round node coordinates to millimetre precision so tiny
+# floating-point differences do not create duplicate nodes.
 COORD_PRECISION = 3
 
 
@@ -37,11 +39,59 @@ def coordinate_key(x, y):
     )
 
 
+def crs_matches_expected(crs):
+    """
+    Compare CRS semantically instead of relying only on an
+    EPSG authority tag being present in the source file.
+    """
+    if crs is None:
+        return False
+
+    return CRS.from_user_input(crs).equals(
+        EXPECTED_CRS
+    )
+
+
 def safe_string(value):
+    """
+    Convert values into GraphML-safe strings.
+    """
     if value is None:
         return ""
 
     return str(value)
+
+
+def safe_float(value, default=0.0):
+    """
+    Convert numeric values safely for GraphML.
+    """
+    try:
+        value = float(value)
+
+        if not np.isfinite(value):
+            return float(default)
+
+        return value
+
+    except (TypeError, ValueError):
+        return float(default)
+
+
+def safe_int(value, default=0):
+    """
+    Convert numeric values safely to integer.
+    """
+    try:
+        value = float(value)
+
+        if not np.isfinite(value):
+            return int(default)
+
+        return int(round(value))
+
+    except (TypeError, ValueError):
+        return int(default)
 
 
 def add_drain_edge(
@@ -51,11 +101,12 @@ def add_drain_edge(
     suffix=None,
 ):
     """
-    Add one directed drainage segment.
+    Add one directed inferred-drainage segment.
 
-    Geometry orientation is preserved:
-    first coordinate = upstream
-    final coordinate = downstream.
+    IMPORTANT:
+    Drainage geometry orientation is preserved as:
+
+        upstream -> downstream
     """
 
     coordinates = list(geometry.coords)
@@ -76,9 +127,9 @@ def add_drain_edge(
         downstream_y,
     )
 
-    # -----------------------------------------------------
-    # Nodes
-    # -----------------------------------------------------
+    # --------------------------------------------------
+    # Create graph nodes
+    # --------------------------------------------------
 
     if upstream_key not in graph:
         graph.add_node(
@@ -94,6 +145,10 @@ def add_drain_edge(
             y=float(downstream_key[1]),
         )
 
+    # --------------------------------------------------
+    # Stable edge ID
+    # --------------------------------------------------
+
     source_drain_id = safe_string(
         row.get("drain_id")
     )
@@ -105,41 +160,57 @@ def add_drain_edge(
             f"{source_drain_id}_{suffix}"
         )
 
-    # -----------------------------------------------------
+    # --------------------------------------------------
     # Edge attributes
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     edge_data = {
+        # Identification / provenance
         "drain_id": graph_drain_id,
         "source_drain_id": source_drain_id,
-
         "source_type": safe_string(
             row.get("source_type")
         ),
-
         "is_inferred": 1,
 
-        "acc_cells": int(
-            row.get("acc_cells", 0)
+        # Catchment / hydrology attributes
+        "acc_cells": safe_int(
+            row.get("acc_cells")
+        ),
+        "upstream_area_m2": safe_float(
+            row.get("upstream_area_m2")
         ),
 
-        "upstream_area_m2": float(
-            row.get(
-                "upstream_area_m2",
-                0.0,
-            )
-        ),
-
+        # Geometry
+        # Recalculate from the exact geometry being inserted.
         "length_m": float(
             geometry.length
         ),
-
-        # GraphML cannot store Shapely geometries,
-        # therefore geometry is stored as WKT.
         "geometry_wkt": geometry.wkt,
 
-        # Hydraulic properties are intentionally not
-        # invented here.
+        # Canonical terrain-derived attributes
+        "start_elevation_m": safe_float(
+            row.get("start_elevation_m")
+        ),
+        "end_elevation_m": safe_float(
+            row.get("end_elevation_m")
+        ),
+        "elevation_drop_m": safe_float(
+            row.get("elevation_drop_m")
+        ),
+        "slope_m_per_m": safe_float(
+            row.get("slope_m_per_m")
+        ),
+        "slope_percent": safe_float(
+            row.get("slope_percent")
+        ),
+        "terrain_slope_deg": safe_float(
+            row.get("terrain_slope_deg")
+        ),
+
+        # Hydraulic capacity is deliberately unknown.
+        # This is DEM-inferred surface drainage, not
+        # surveyed municipal stormwater infrastructure.
         "hydraulic_capacity_known": 0,
     }
 
@@ -152,8 +223,8 @@ def add_drain_edge(
 
 def build_graph(drainage):
     """
-    Convert inferred drainage lines into a directed
-    NetworkX MultiDiGraph.
+    Convert canonical inferred drainage lines into a
+    directed NetworkX MultiDiGraph.
     """
 
     graph = nx.MultiDiGraph()
@@ -168,10 +239,15 @@ def build_graph(drainage):
         "dem_inferred_surface_flow"
     )
 
-    graph.graph["is_surveyed_municipal_drainage"] = 0
+    graph.graph[
+        "is_surveyed_municipal_drainage"
+    ] = 0
+
+    graph.graph[
+        "terrain_source"
+    ] = "canonical_grass_r_watershed"
 
     for _, row in drainage.iterrows():
-
         geometry = row.geometry
 
         if geometry is None or geometry.is_empty:
@@ -181,7 +257,6 @@ def build_graph(drainage):
             geometry,
             LineString,
         ):
-
             add_drain_edge(
                 graph,
                 row,
@@ -192,11 +267,15 @@ def build_graph(drainage):
             geometry,
             MultiLineString,
         ):
-
             for index, part in enumerate(
                 geometry.geoms,
                 start=1,
             ):
+                if (
+                    part is None
+                    or part.is_empty
+                ):
+                    continue
 
                 add_drain_edge(
                     graph,
@@ -210,8 +289,8 @@ def build_graph(drainage):
 
 def relabel_nodes(graph):
     """
-    Replace coordinate tuple node IDs with readable,
-    stable drainage node IDs.
+    Replace coordinate-tuple node IDs with stable readable
+    drainage node IDs while preserving x/y attributes.
     """
 
     sorted_nodes = sorted(
@@ -238,14 +317,13 @@ def relabel_nodes(graph):
 
 
 def main():
-
     print(
         "\n=== DRAINAGE GRAPH BUILD ===\n"
     )
 
-    # -----------------------------------------------------
-    # Load drainage
-    # -----------------------------------------------------
+    # --------------------------------------------------
+    # Load canonical drainage dataset
+    # --------------------------------------------------
 
     if not DRAINAGE_PATH.exists():
         raise FileNotFoundError(
@@ -277,27 +355,59 @@ def main():
         f"{drainage.crs}"
     )
 
-    # -----------------------------------------------------
-    # CRS
-    # -----------------------------------------------------
+    # --------------------------------------------------
+    # CRS validation
+    # --------------------------------------------------
 
-    if (
-        drainage.crs.to_epsg()
-        != EXPECTED_EPSG
+    if not crs_matches_expected(
+        drainage.crs
     ):
-
         print(
             "Reprojecting drainage "
             "to EPSG:32643..."
         )
 
         drainage = drainage.to_crs(
-            epsg=EXPECTED_EPSG
+            "EPSG:32643"
         )
 
-    # -----------------------------------------------------
-    # Geometry filtering
-    # -----------------------------------------------------
+    # --------------------------------------------------
+    # Required enriched attributes
+    # --------------------------------------------------
+
+    required_attributes = [
+        "drain_id",
+        "source_type",
+        "is_inferred",
+        "acc_cells",
+        "upstream_area_m2",
+        "length_m",
+        "start_elevation_m",
+        "end_elevation_m",
+        "elevation_drop_m",
+        "slope_m_per_m",
+        "slope_percent",
+        "terrain_slope_deg",
+    ]
+
+    missing_attributes = [
+        attribute
+        for attribute in required_attributes
+        if attribute not in drainage.columns
+    ]
+
+    if missing_attributes:
+        raise ValueError(
+            "Drainage dataset is missing required "
+            "attributes: "
+            + ", ".join(
+                missing_attributes
+            )
+        )
+
+    # --------------------------------------------------
+    # Geometry validation
+    # --------------------------------------------------
 
     drainage = drainage[
         drainage.geometry.notna()
@@ -310,9 +420,9 @@ def main():
         f"{len(drainage)}"
     )
 
-    # -----------------------------------------------------
-    # Build graph
-    # -----------------------------------------------------
+    # --------------------------------------------------
+    # Build NetworkX graph
+    # --------------------------------------------------
 
     graph = build_graph(
         drainage
@@ -322,9 +432,9 @@ def main():
         graph
     )
 
-    # -----------------------------------------------------
-    # Statistics
-    # -----------------------------------------------------
+    # --------------------------------------------------
+    # Connectivity statistics
+    # --------------------------------------------------
 
     node_count = (
         graph.number_of_nodes()
@@ -334,20 +444,20 @@ def main():
         graph.number_of_edges()
     )
 
-    weak_components = list(
+    components = list(
         nx.weakly_connected_components(
             graph
         )
     )
 
-    weak_components.sort(
+    components.sort(
         key=len,
         reverse=True,
     )
 
     largest_component = (
-        len(weak_components[0])
-        if weak_components
+        len(components[0])
+        if components
         else 0
     )
 
@@ -370,17 +480,55 @@ def main():
     ]
 
     isolated_nodes = list(
-        nx.isolates(graph)
+        nx.isolates(
+            graph
+        )
     )
 
     total_length = sum(
-        data["length_m"]
+        float(data["length_m"])
         for _, _, _, data
         in graph.edges(
             keys=True,
             data=True,
         )
     )
+
+    # --------------------------------------------------
+    # Terrain statistics
+    # --------------------------------------------------
+
+    drops = [
+        float(
+            data["elevation_drop_m"]
+        )
+        for _, _, _, data
+        in graph.edges(
+            keys=True,
+            data=True,
+        )
+    ]
+
+    slopes = [
+        float(
+            data["slope_percent"]
+        )
+        for _, _, _, data
+        in graph.edges(
+            keys=True,
+            data=True,
+        )
+    ]
+
+    uphill_edges = sum(
+        1
+        for value in drops
+        if value < -0.05
+    )
+
+    # --------------------------------------------------
+    # Summary
+    # --------------------------------------------------
 
     print(
         "\n=== DRAINAGE GRAPH SUMMARY ==="
@@ -398,7 +546,7 @@ def main():
 
     print(
         f"Weak components      : "
-        f"{len(weak_components)}"
+        f"{len(components)}"
     )
 
     print(
@@ -426,12 +574,31 @@ def main():
         f"{total_length / 1000:.2f} km"
     )
 
-    # -----------------------------------------------------
-    # Directed acyclic graph check
-    # -----------------------------------------------------
+    print(
+        f"Uphill graph edges   : "
+        f"{uphill_edges}"
+    )
 
-    is_dag = nx.is_directed_acyclic_graph(
-        graph
+    if drops:
+        print(
+            f"Mean elevation drop  : "
+            f"{np.mean(drops):.3f} m"
+        )
+
+    if slopes:
+        print(
+            f"Mean segment slope   : "
+            f"{np.mean(slopes):.3f} %"
+        )
+
+    # --------------------------------------------------
+    # Directed topology check
+    # --------------------------------------------------
+
+    is_dag = (
+        nx.is_directed_acyclic_graph(
+            graph
+        )
     )
 
     print(
@@ -439,9 +606,9 @@ def main():
         f"{is_dag}"
     )
 
-    # -----------------------------------------------------
+    # --------------------------------------------------
     # Save GraphML
-    # -----------------------------------------------------
+    # --------------------------------------------------
 
     GRAPH_OUTPUT_PATH.parent.mkdir(
         parents=True,
@@ -466,12 +633,13 @@ def main():
     )
 
     print(
-        "This graph represents DEM-inferred "
-        "surface-flow pathways."
+        "The graph represents DEM-inferred "
+        "surface-flow pathways using the "
+        "canonical terrain pipeline."
     )
 
     print(
-        "It is not surveyed municipal "
+        "It is NOT surveyed municipal "
         "stormwater infrastructure."
     )
 
