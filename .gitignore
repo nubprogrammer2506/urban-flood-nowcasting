@@ -1,41 +1,97 @@
+# ==========================================
 # Python
+# ==========================================
 .venv/
 __pycache__/
 *.pyc
+*.pyo
 
-# Environment
+# ==========================================
+# Environment / secrets
+# ==========================================
 .env
+.env.*
 
-# Editors
+# ==========================================
+# IDE
+# ==========================================
 .vscode/
 .idea/
 
-# OS
+# ==========================================
+# Operating system
+# ==========================================
 .DS_Store
 Thumbs.db
 
-# QGIS temporary files
+# ==========================================
+# QGIS temporary / metadata files
+# ==========================================
 *.qgz~
 *.qgs~
 *.aux.xml
 *.ovr
 
-# Large GIS inputs
+data/raw/aoi/*.qmd
+data/raw/aoi/*.qgz
+
+# ==========================================
+# Raw DEM data
+# ==========================================
 data/raw/dem/*.tif
+data/raw/dem/*.tar.gz
+data/raw/dem/*.zip
+data/raw/dem/*.aux.xml
+
+# ==========================================
+# Large rainfall / land-use rasters
+# ==========================================
 data/raw/rainfall/*
+!data/raw/rainfall/*.json
+!data/raw/rainfall/.gitkeep
 data/raw/landuse/*.tif
 
-# Keep rainfall folder placeholder
-!data/raw/rainfall/.gitkeep
+# ==========================================
+# Generated GIS outputs
+# ==========================================
+data/processed/**/*.tif
+data/processed/**/*.tfw
+data/processed/**/*.aux.xml
 
-# Generated GIS data
-data/processed/*
 data/outputs/*
 
-# Allow folder structure to exist
-!data/processed/**/
-!data/outputs/**/
-
-# Preserve placeholders
+# ==========================================
+# Preserve directory placeholders
+# ==========================================
 !data/processed/**/.gitkeep
 !data/outputs/**/.gitkeep
+
+
+# OSMnx cache
+cache/
+
+# Reproducible road GIS files
+data/raw/roads/*.gpkg
+data/processed/roads/*.gpkg
+
+# Generated NetworkX graph
+data/processed/roads/*.graphml
+
+# Canonical processed road dataset is committed
+!data/processed/roads/
+!data/processed/roads/roads.geojson
+!data/processed/roads/.gitkeep
+
+
+
+# Generated drainage graph
+data/processed/drainage/*.graphml
+
+# Generated drainage rasters
+data/processed/drainage/*.tif
+data/processed/terrain/*.tif
+
+# Canonical inferred drainage dataset
+!data/processed/drainage/
+!data/processed/drainage/drainage.geojson
+!data/processed/drainage/.gitkeep
