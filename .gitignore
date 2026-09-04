@@ -79,3 +79,17 @@ data/processed/roads/*.graphml
 !data/processed/roads/
 !data/processed/roads/roads.geojson
 !data/processed/roads/.gitkeep
+
+
+
+# Generated drainage graph
+data/processed/drainage/*.graphml
+
+# Generated drainage rasters
+data/processed/drainage/*.tif
+data/processed/terrain/*.tif
+
+# Canonical inferred drainage dataset
+!data/processed/drainage/
+!data/processed/drainage/drainage.geojson
+!data/processed/drainage/.gitkeep
